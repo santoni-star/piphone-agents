@@ -1,7 +1,7 @@
 """guest_messaging.py — WhatsApp, Telegram, SMS, Phone дії."""
 
-from core.plugin_api import Plugin, Action, registry
-from core.android_intents import resolve, INTENTS
+from core.action_manager import Plugin, Action, registry
+from core.android_intents import resolve
 
 
 class WhatsAppGuest(Plugin):
