@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "piphone-agents"
+version = "0.1.0"
+description = "Родина кишенькових AI-агентів на Android"
+requires-python = ">=3.10"
+
+[project.scripts]
+piphone = "agents.coordinator.coordinator:main"
+
+[tool.setuptools.packages.find]
+include = ["core", "core.*", "guests", "guests.*", "agents", "agents.*"]
