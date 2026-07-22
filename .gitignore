@@ -1,1 +1,6 @@
-__pycache__/\n*.pyc\n.DS_Store\n.env\n*.apk\n*.aab
+__pycache__/
+*.pyc
+.DS_Store
+.env
+*.apk
+*.aab

@@ -103,18 +103,16 @@ class CactusAdapter:
         # Шаблони: (ключові слова, дія, {аргументи}, впевненість)
         patterns = [
             # ── Telegram ──
-            (r'(?:напиши|відправ|надішли)\s.*?(?:telegram|телеграм|тг)\s*[:@]?\s*(\w+)', 
-             "telegram:send_message", {"username": "{1}"}, 0.75),
-            (r'(?:напиши|відправ|надішли)\s.*?(?:tg|тг)\s*[:@]?\s*(\w+)',
-             "telegram:send_message", {"username": "{1}"}, 0.7),
+            (r'(?:напиши|відправ|надішли)\s.*?(?:telegram|телеграм|тг)\s*[:@]?\s*(\w+)\s+(.+)', 
+             "telegram:send_message", {"username": "{1}", "text": "{2}"}, 0.8),
 
             # ── WhatsApp ──
-            (r'(?:напиши|відправ|надішли)\s.*?(?:whatsapp|ватсап|вацап)\s*(\d+)',
-             "whatsapp:send_message", {"phone": "{1}"}, 0.7),
+            (r'(?:напиши|відправ|надішли)\s.*?(?:whatsapp|ватсап|вацап)\s*(\d+)\s+(.+)',
+             "whatsapp:send_message", {"phone": "{1}", "text": "{2}"}, 0.8),
 
             # ── SMS ──
-            (r'(?:напиши|відправ|надішли)\s.*?sms\s*(\d+)',
-             "sms:send_sms", {"phone": "{1}"}, 0.7),
+            (r'(?:напиши|відправ|надішли)\s.*?sms\s*(\d+)\s+(.+)',
+             "sms:send_sms", {"phone": "{1}", "text": "{2}"}, 0.8),
 
             # ── Дзвінки ──
             (r'(?:зателефонуй|подзвони|дзвінок)\s*(?:\w+\s+)?(\d+)',
@@ -123,16 +121,18 @@ class CactusAdapter:
              "phone:make_call", {"phone": "contact"}, 0.65),
 
             # ── YouTube ──
+            (r'знайди\s+(?:відео|youtube|ютуб)\s+(.+)',
+             "youtube:search_video", {"query": "{1}"}, 0.85),
             (r'(?:увімкни|відкрий|знайди)\s.*?(?:відео|youtube|ютуб)',
-             "youtube:search_video", {"query": query}, 0.6),
+             "youtube:search_video", {"query": query}, 0.8),
             (r'(?:увімкни|відкрий)\s+(\w{11})\s*$',
              "youtube:play_video", {"query": "{1}"}, 0.75),
 
             # ── Карти ──
             (r'(?:проклади|покажи|знайди)\s.*?(?:маршрут|дорогу|шлях)',
-             "maps:navigate_to", {"lat": 50.45, "lon": 30.52}, 0.6),
+             "maps:navigate_to", {"lat": 50.45, "lon": 30.52}, 0.75),
             (r'(?:де|знайди)\s.*?(?:кав\'ярн|ресторан|аптек|магазин)',
-             "maps:search_places", {"query": query}, 0.7),
+             "maps:search_places", {"query": query}, 0.75),
 
             # ── GPS ──
             (r'де\s+я\s*(?:зараз|знаходжусь)?\s*\??$',
@@ -153,8 +153,10 @@ class CactusAdapter:
              "system:toggle_flashlight", {"state": False}, 0.85),
 
             # ── Нотатки ──
-            (r'(?:запам\'ятай|запиши|створи)\s.*?(?:нотатку|замітку|нагадування)',
-             "notes:create_note", {"text": query}, 0.6),
+            (r'запам\'ятай\s+(.+)',
+             "notes:create_note", {"text": "{1}"}, 0.8),
+            (r'(?:запиши|створи)\s.*?(?:нотатку|замітку|нагадування)\s+(.+)',
+             "notes:create_note", {"text": "{1}"}, 0.75),
         ]
 
         best: Optional[CactusResult] = None

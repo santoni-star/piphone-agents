@@ -100,15 +100,33 @@ class AgentLoop:
         # Крок 1: Cactus Needle (reflex)
         cactus_result = self.cactus.analyze(query)
         if cactus_result and cactus_result.confidence >= 0.75:
-            logger.info(f"Cactus Needle: {cactus_result.action} "
-                        f"({cactus_result.confidence:.0%})")
-            return {
-                "action": cactus_result.action,
-                "args": cactus_result.args,
-                "confidence": cactus_result.confidence,
-                "source": "cactus",
-            }
-
+            # Перевіряємо, чи всі обов'язкові параметри дії присутні
+            action_def = actions.get(cactus_result.action)
+            if action_def:
+                missing = [p for p in action_def.params if p not in cactus_result.args]
+                if missing:
+                    logger.info(f"Cactus: у '{cactus_result.action}' бракує {missing}, "
+                                f"пропускаю")
+                    cactus_result = None
+                else:
+                    logger.info(f"Cactus Needle: {cactus_result.action} "
+                                f"({cactus_result.confidence:.0%})")
+                    return {
+                        "action": cactus_result.action,
+                        "args": cactus_result.args,
+                        "confidence": cactus_result.confidence,
+                        "source": "cactus",
+                    }
+            else:
+                # Дія не зареєстрована — все одно пробуємо
+                logger.info(f"Cactus Needle: {cactus_result.action} "
+                            f"({cactus_result.confidence:.0%})")
+                return {
+                    "action": cactus_result.action,
+                    "args": cactus_result.args,
+                    "confidence": cactus_result.confidence,
+                    "source": "cactus",
+                }
         # Крок 2: LLM
         if self.llm:
             plan = self._plan_with_llm(query)
@@ -156,10 +174,18 @@ class AgentLoop:
         Крок 3: Перевірити чи треба ще крок.
 
         Повертає True, якщо треба повторити цикл (напр. при помилці).
+        Не повторює, якщо помилка та сама, що на попередньому кроці.
         """
-        if "error" in result and self.context.step < self.context.max_steps:
-            logger.warning(f"Помилка: {result['error']}. Повтор...")
-            return True
+        if "error" in result:
+            if self.context.step < self.context.max_steps:
+                # Якщо та сама помилка — не повторюємо
+                prev = self.context.last_result
+                if prev and prev.get("error") == result["error"]:
+                    logger.warning(f"Помилка повторюється: {result['error']}. "
+                                   f"Припиняю спроби.")
+                    return False
+                logger.warning(f"Помилка: {result['error']}. Повтор...")
+                return True
         if result.get("requires_followup"):
             return True
         return False
