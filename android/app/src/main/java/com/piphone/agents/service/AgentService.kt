@@ -2,6 +2,7 @@ package com.piphone.agents.service
 
 import android.app.*
 import android.content.Intent
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -16,13 +17,22 @@ class AgentService : Service() {
         const val CHANNEL_ID = "piphone_agent"
         const val NOTIFICATION_ID = 1
         var isRunning = false
+        var instance: AgentService? = null
+        private const val TAG = "AgentService"
     }
 
+    inner class AgentBinder : Binder() {
+        fun getService(): AgentService = this@AgentService
+    }
+
+    private val binder = AgentBinder()
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private lateinit var agentLoop: AgentLoop
+    lateinit var agentLoop: AgentLoop
+        private set
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         createNotificationChannel()
 
         val actionManager = ActionManager()
@@ -32,20 +42,22 @@ class AgentService : Service() {
         actionManager.register(SystemActions(this))
 
         val cactus = CactusAdapter()
-        val llm = null // LLMClient(LLMConfig())
+        val llm = LLMClient(LLMConfig())
 
         agentLoop = AgentLoop(
             cactus = cactus,
             llm = llm,
             actions = actionManager
         )
+
+        Log.i(TAG, "AgentService created with ${actionManager.actionCount} actions")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         isRunning = true
         val notification = createNotification()
         startForeground(NOTIFICATION_ID, notification)
-        Log.i("AgentService", "PiPhone Agent started")
+        Log.i(TAG, "PiPhone Agent started (foreground)")
         return START_STICKY
     }
 
@@ -53,17 +65,23 @@ class AgentService : Service() {
         serviceScope.launch {
             try {
                 val result = agentLoop.run(query)
-                callback(result)
+                withContext(Dispatchers.Main) {
+                    callback(result)
+                }
             } catch (e: Exception) {
-                callback("❌ Помилка: ${e.message}")
+                Log.e(TAG, "processQuery error", e)
+                withContext(Dispatchers.Main) {
+                    callback("❌ Помилка: ${e.message}")
+                }
             }
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onDestroy() {
         isRunning = false
+        instance = null
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -75,7 +93,8 @@ class AgentService : Service() {
                 "PiPhone Agent",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "PiPhone background service"
+                description = "Служба голосового асистента PiPhone"
+                setShowBadge(false)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
@@ -90,7 +109,7 @@ class AgentService : Service() {
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("🧠 PiPhone")
-            .setContentText("Слухаю...")
+            .setContentText("Готовий до команд")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
